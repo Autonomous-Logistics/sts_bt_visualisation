@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>sts_bt_visualisation</name>
+  <version>1.0.0</version>
+  <description>The sts_bt_visualisation package for graph visualisation based on https://github.com/jrfonseca/xdot.py</description>
+  <author>Nick Fiege, Sebastian Mueller, Robert Rudolph</author>
+  <maintainer email="nick.fiege@streetscooter.com">Nick Fiege</maintainer>
+  <maintainer email="sebastian.mueller2@streetscooter.com">Sebastian Mueller</maintainer>
+  <license>LGPLv3</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>rospy</depend>
+  <depend>sts_bt_library</depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+  <export>
+    <!-- Other tools can request additional information be placed here -->
+
+  </export>
+</package>

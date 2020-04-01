@@ -1,0 +1,111 @@
+#!/usr/bin/env python  
+
+# Copyright (C) 2018-2020 Sebastian Mueller, Nick Fiege - All Rights Reserved
+#
+#   Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"),
+#   to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+#   and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#   The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+#
+#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+#   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+import rospy
+import threading
+import signal
+
+import gi
+gi.require_version('Gtk', '3.0')
+
+from gi.repository import Gtk, GObject, GLib
+from std_msgs.msg import String
+from std_srvs.srv import Trigger
+from sts_bt_library.msg import bt_draw_event
+from sts_bt_library.msg import bt_draw_update
+
+import xdot
+
+class MyDotWindow(xdot.DotWindow):
+
+    alreadyDrawnTree = False
+    ratio = 0.1
+    
+    def __init__(self):
+        xdot.DotWindow.__init__(self)
+
+        rospy.init_node('sts_bt_visualisation_node', anonymous=False, log_level=rospy.INFO, disable_signals=True)   
+        #rospy.on_shutdown(self.test_ros)
+
+        dotCodeListener = rospy.Subscriber('~treeStructure', String, self.treeStructureCallback)
+        treeColorListener = rospy.Subscriber('~treeUpdate', bt_draw_update, self.treeUpdateCallback)
+        self.reloadGraphMlService = rospy.ServiceProxy('~reloadGraphMl', Trigger)
+
+        rosThread = threading.Thread(target=self.spin_cb)
+        rosThread.daemon = True
+        rosThread.start()
+
+    #def test_ros(self):
+    #    print('called shutdown')
+
+    def spin_cb(self):
+        rospy.spin()
+
+    def treeStructureCallback(self, message):
+        prefix = "digraph debug_bt { "#\ngraph [ratio=\"%f\"]\n" %self.ratio
+        dotCode = prefix + message.data
+        xdot.DotWindow.drawTree(self, dotCode)
+        self.alreadyDrawnTree = True
+        #self.dotwidget.emit('draw_cb', message.data)
+
+    def treeUpdateCallback(self, message):
+        if(self.alreadyDrawnTree):
+            xdot.DotWindow.updateTree(self,message)
+        #self.dotwidget.emit('colorUpdate_cb', message)
+
+    #-------------
+    # dotCode format    
+    #-------------
+    #digraph G {
+    #  Hello [URL="http://en.wikipedia.org/wiki/Hello"]
+    #  World [URL="http://en.wikipedia.org/wiki/World"]
+    #    Hello -> World
+    #}"""
+
+    #-------------
+    # additional node information on click
+    #-------------
+    #self.dotwidget.connect('clicked', self.on_url_clicked)
+    #def on_url_clicked(self, widget, url, event):
+    #    dialog = Gtk.MessageDialog(
+    #        parent=self,
+    #        buttons=Gtk.ButtonsType.OK,
+    #        message_format="%s clicked" % url)
+    #    dialog.connect('response', lambda dialog, response: dialog.destroy())
+    #    dialog.run()
+    #    return True
+
+#def sigterm(signum, frame):
+#    print('Called sigterm')
+#    Gtk.main_quit()
+
+def sigterm():
+    rospy.signal_shutdown('SIGINT / SIGTERM')
+    Gtk.main_quit()  
+
+if __name__ == '__main__':
+    #signal.signal(signal.SIGINT, sigterm)
+    #signal.signal(signal.SIGTERM, sigterm)
+
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT, sigterm)
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, sigterm)
+
+    #GObject.threads_init()
+
+    window = MyDotWindow()
+    window.connect('delete-event', Gtk.main_quit)
+
+    Gtk.main()  
+        
+    
